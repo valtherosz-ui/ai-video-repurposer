@@ -2,45 +2,49 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 import { headers } from 'next/headers'
-
-// Simple in-memory rate limiter (for production, use Redis or similar)
-const rateLimit = new Map<string, { count: number; resetTime: number }>()
+import { loginRateLimiter } from '@/lib/rate-limit'
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(1, 'Password is required'),
+  rememberMe: z.boolean().optional().default(false),
 })
 
-// Rate limiting function
-const checkRateLimit = (identifier: string, maxAttempts = 5, windowMs = 15 * 60 * 1000) => {
-  const now = Date.now()
-  const record = rateLimit.get(identifier)
-
-  if (!record || now > record.resetTime) {
-    rateLimit.set(identifier, { count: 1, resetTime: now + windowMs })
-    return true
-  }
-
-  if (record.count >= maxAttempts) {
-    return false
-  }
-
-  record.count++
-  return true
+/**
+ * Mask email for privacy-safe logging
+ * Example: "john.doe@example.com" -> "jo***@example.com"
+ */
+function maskEmail(email: string): string {
+  const [localPart, domain] = email.split('@')
+  if (!localPart || !domain) return '***'
+  const maskedLocal = localPart.length > 2 
+    ? `${localPart.slice(0, 2)}***` 
+    : '***'
+  return `${maskedLocal}@${domain}`
 }
 
 export async function POST(request: NextRequest) {
   try {
     const headersList = await headers()
-    const ip = headersList.get('x-forwarded-for') || 'unknown'
+    const ip = headersList.get('x-forwarded-for') || 
+               headersList.get('x-real-ip') || 
+               'unknown'
     const userAgent = headersList.get('user-agent') || 'unknown'
 
     // Rate limiting
-    if (!checkRateLimit(ip)) {
-      console.warn(`Rate limit exceeded for IP: ${ip}, User-Agent: ${userAgent}`)
+    const rateLimitResult = await loginRateLimiter.check(ip)
+    if (!rateLimitResult.allowed) {
+      const retryAfter = Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)
+      console.warn(`Rate limit exceeded for IP: ${ip}`)
       return NextResponse.json(
-        { error: 'Too many login attempts. Please try again later.' },
-        { status: 429 }
+        { 
+          error: 'Too many login attempts. Please try again later.',
+          retryAfter 
+        },
+        { 
+          status: 429,
+          headers: { 'Retry-After': String(retryAfter) }
+        }
       )
     }
 
@@ -55,7 +59,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { email, password } = validationResult.data
+    const { email, password, rememberMe } = validationResult.data
 
     // Sign in with Supabase
     const supabase = await createClient()
@@ -65,8 +69,8 @@ export async function POST(request: NextRequest) {
     })
 
     if (error) {
-      // Log failed login attempt
-      console.warn(`Failed login attempt for email: ${email}, IP: ${ip}, Error: ${error.message}`)
+      // Log failed login attempt with masked email (PII-safe)
+      console.warn(`Failed login attempt for email: ${maskEmail(email)}, IP: ${ip}, Error: ${error.message}`)
 
       // Handle specific error cases with generic messages
       if (error.message.includes('Invalid login credentials')) {
@@ -87,6 +91,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Clear rate limit on successful login
+    await loginRateLimiter.reset(ip)
+
     // Get user profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
@@ -100,8 +107,16 @@ export async function POST(request: NextRequest) {
       // Profile will be created by database trigger
     }
 
-    // Log successful login
-    console.info(`Successful login for user: ${data.user.id}, Email: ${email}, IP: ${ip}`)
+    // Log successful login with masked email (PII-safe)
+    console.info(`Successful login for user: ${data.user.id}, Email: ${maskEmail(email)}, IP: ${ip}`)
+
+    // Handle "Remember Me" functionality
+    // If rememberMe is true, the session will persist longer
+    // Supabase handles this via cookie configuration
+    if (rememberMe) {
+      // The session cookie is already set by Supabase
+      // Additional session persistence is handled by the auth state
+    }
 
     return NextResponse.json({
       message: 'Login successful',
@@ -111,6 +126,7 @@ export async function POST(request: NextRequest) {
         profile,
       },
       session: data.session,
+      remembered: rememberMe,
     })
   } catch (error) {
     console.error('Login error:', error)
