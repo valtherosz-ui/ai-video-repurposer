@@ -10,6 +10,7 @@ export function LoginForm() {
   const router = useRouter()
   const { login, loading } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -21,7 +22,7 @@ export function LoginForm() {
     setError('')
 
     try {
-      await login(formData.email, formData.password)
+      await login(formData.email, formData.password, rememberMe)
       router.push('/dashboard')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed'
@@ -80,10 +81,13 @@ export function LoginForm() {
       </div>
 
       <div className="flex items-center justify-between text-sm">
-        <label className="flex items-center gap-2 text-slate-300">
+        <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
           <input
             type="checkbox"
-            className="w-4 h-4 rounded border-white/20 bg-white/5 text-purple-500 focus:ring-purple-500"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            className="w-4 h-4 rounded border-white/20 bg-white/5 text-purple-500 focus:ring-purple-500 cursor-pointer"
+            disabled={loading}
           />
           Remember me
         </label>
