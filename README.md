@@ -107,3 +107,7 @@ pnpm drizzle-kit studio     # Open DB GUI
 ## Deployment
 
 Auto-deploys to Vercel on push to `main`.
+
+**Note:** Set `NEXT_PUBLIC_*` env vars in all Vercel environments (Production, Preview, Development) so they embed at build time.
+
+**Note:** Set `NEXT_PUBLIC_*` env vars in all Vercel environments (Production, Preview, Development) so they embed at build time.
