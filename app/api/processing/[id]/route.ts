@@ -12,9 +12,10 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     // Get user from session
     const authHeader = request.headers.get('authorization')
     if (!authHeader) {
@@ -34,7 +35,7 @@ export async function GET(
       )
     }
 
-    const jobId = params.id
+    const jobId = id
 
     // Fetch processing job
     const { data: job, error } = await supabase
