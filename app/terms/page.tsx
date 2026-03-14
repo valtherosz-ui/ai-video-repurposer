@@ -45,7 +45,7 @@ export default function TermsPage() {
             <section className="mb-8">
               <h2 className="text-xl font-semibold text-white mb-4">3. Disclaimer</h2>
               <p className="text-slate-300 leading-relaxed">
-                The materials on AI Video Repurposer are provided on an 'as is' basis. AI Video Repurposer makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.
+                The materials on AI Video Repurposer are provided on an &apos;as is&apos; basis. AI Video Repurposer makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.
               </p>
             </section>
 

@@ -1,41 +1,22 @@
 /**
  * Rate Limiting Utility
- * 
- * Supports both Redis (for production/serverless) and in-memory (for development) backends.
- * 
+ *
+ * Uses Upstash Redis for rate limiting in production.
+ * If Redis is not configured, rate limiting is disabled (for development).
+ *
  * Usage:
  *   // For login endpoints (5 attempts per 15 minutes)
  *   const loginLimiter = createRateLimiter('login', { maxAttempts: 5, windowMs: 15 * 60 * 1000 })
  *   const allowed = await loginLimiter.check(identifier)
- * 
+ *
  * Environment Variables:
- *   - UPSTASH_REDIS_REST_URL: Upstash Redis REST URL (optional, enables Redis backend)
- *   - UPSTASH_REDIS_REST_TOKEN: Upstash Redis REST token (optional, enables Redis backend)
+ *   - UPSTASH_REDIS_REST_URL: Upstash Redis REST URL (required for rate limiting)
+ *   - UPSTASH_REDIS_REST_TOKEN: Upstash Redis REST token (required for rate limiting)
  */
 
 interface RateLimitConfig {
   maxAttempts: number
   windowMs: number
-}
-
-interface RateLimitRecord {
-  count: number
-  resetTime: number
-}
-
-// In-memory fallback for development
-const memoryStore = new Map<string, RateLimitRecord>()
-
-// Cleanup old entries every 5 minutes to prevent memory leaks
-if (typeof setInterval !== 'undefined') {
-  setInterval(() => {
-    const now = Date.now()
-    for (const [key, record] of memoryStore.entries()) {
-      if (now > record.resetTime) {
-        memoryStore.delete(key)
-      }
-    }
-  }, 5 * 60 * 1000)
 }
 
 /**
@@ -123,29 +104,6 @@ async function redisCheck(
 }
 
 /**
- * In-memory rate limiting (for development only)
- */
-function memoryCheck(
-  key: string,
-  config: RateLimitConfig
-): { allowed: boolean; remaining: number; resetTime: number } {
-  const now = Date.now()
-  const record = memoryStore.get(key)
-
-  if (!record || now > record.resetTime) {
-    memoryStore.set(key, { count: 1, resetTime: now + config.windowMs })
-    return { allowed: true, remaining: config.maxAttempts - 1, resetTime: now + config.windowMs }
-  }
-
-  if (record.count >= config.maxAttempts) {
-    return { allowed: false, remaining: 0, resetTime: record.resetTime }
-  }
-
-  record.count++
-  return { allowed: true, remaining: config.maxAttempts - record.count, resetTime: record.resetTime }
-}
-
-/**
  * Create a rate limiter with the given configuration
  */
 export function createRateLimiter(prefix: string, config: RateLimitConfig) {
@@ -155,21 +113,24 @@ export function createRateLimiter(prefix: string, config: RateLimitConfig) {
      * @param identifier - Unique identifier (e.g., IP address, user ID)
      * @returns Object with allowed status, remaining attempts, and reset time
      */
-    async check(identifier: string): Promise<{ 
+    async check(identifier: string): Promise<{
       allowed: boolean
       remaining: number
-      resetTime: number 
+      resetTime: number
     }> {
       const key = `${prefix}:${identifier}`
-      
+
       // Use Redis if configured (production)
       if (isRedisConfigured()) {
         return redisCheck(key, config)
       }
-      
-      // Fall back to in-memory (development)
-      console.warn(`[DEV] Using in-memory rate limiting for ${prefix}. Configure Upstash Redis for production.`)
-      return memoryCheck(key, config)
+
+      // No Redis configured - disable rate limiting entirely
+      return {
+        allowed: true,
+        remaining: config.maxAttempts,
+        resetTime: Date.now() + config.windowMs
+      }
     },
 
     /**
@@ -178,7 +139,7 @@ export function createRateLimiter(prefix: string, config: RateLimitConfig) {
      */
     async reset(identifier: string): Promise<void> {
       const key = `${prefix}:${identifier}`
-      
+
       if (isRedisConfigured()) {
         const { UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN } = process.env
         if (UPSTASH_REDIS_REST_URL && UPSTASH_REDIS_REST_TOKEN) {
@@ -189,9 +150,8 @@ export function createRateLimiter(prefix: string, config: RateLimitConfig) {
             },
           })
         }
-      } else {
-        memoryStore.delete(key)
       }
+      // No-op when Redis not configured
     },
 
     /**
@@ -199,7 +159,7 @@ export function createRateLimiter(prefix: string, config: RateLimitConfig) {
      */
     async getRemaining(identifier: string): Promise<number> {
       const key = `${prefix}:${identifier}`
-      
+
       if (isRedisConfigured()) {
         const { UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN } = process.env
         if (UPSTASH_REDIS_REST_URL && UPSTASH_REDIS_REST_TOKEN) {
@@ -218,14 +178,8 @@ export function createRateLimiter(prefix: string, config: RateLimitConfig) {
             console.error('Redis get remaining error:', error)
           }
         }
-      } else {
-        const record = memoryStore.get(key)
-        if (!record || Date.now() > record.resetTime) {
-          return config.maxAttempts
-        }
-        return Math.max(0, config.maxAttempts - record.count)
       }
-      
+      // When Redis not configured, always return max attempts
       return config.maxAttempts
     },
   }

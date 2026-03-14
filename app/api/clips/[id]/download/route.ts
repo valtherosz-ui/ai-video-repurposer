@@ -23,9 +23,10 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     // Get user from session
     const authHeader = request.headers.get('authorization')
     if (!authHeader) {
@@ -45,7 +46,7 @@ export async function POST(
       )
     }
 
-    const clipId = params.id
+    const clipId = id
 
     // Get expiration time from query params
     const { searchParams } = new URL(request.url)
@@ -132,9 +133,10 @@ export async function POST(
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     // Get user from session
     const authHeader = request.headers.get('authorization')
     if (!authHeader) {
@@ -154,7 +156,7 @@ export async function GET(
       )
     }
 
-    const clipId = params.id
+    const clipId = id
 
     // Fetch clip with video info to verify ownership
     const { data: clip, error: fetchError } = await supabase

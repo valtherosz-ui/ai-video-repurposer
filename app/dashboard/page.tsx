@@ -172,7 +172,7 @@ export default function DashboardPage() {
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-white mb-2">Welcome back!</h2>
               <p className="text-slate-400">
-                Here's an overview of your video processing activity
+                Here&apos;s an overview of your video processing activity
               </p>
             </div>
 
@@ -234,7 +234,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="text-left">
                     <p className="text-slate-300 font-medium">Dashboard</p>
-                    <p className="text-slate-500 text-sm">You're already here</p>
+                    <p className="text-slate-500 text-sm">You&apos;re already here</p>
                   </div>
                 </div>
               </div>

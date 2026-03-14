@@ -10,21 +10,21 @@ interface Activity {
   id: string
   type: 'upload' | 'processing' | 'completed' | 'clip' | 'delete' | 'failed'
   message: string
-  timestamp: string
+  timestamp: string | null
   videoId?: string
-  videoTitle?: string
+  videoTitle?: string | null
   clipCount?: number
 }
 
 interface ProcessingJobInfo {
   id: string
   videoId: string
-  videoTitle: string
-  status: 'pending' | 'processing' | 'completed' | 'failed'
-  currentStep: string
-  progress: number
-  createdAt: string
-  updatedAt: string
+  videoTitle: string | null
+  status: 'pending' | 'processing' | 'completed' | 'failed' | null
+  currentStep: string | null
+  progress: number | null
+  createdAt: string | null
+  updatedAt: string | null
 }
 
 export async function GET(request: NextRequest) {
@@ -150,8 +150,8 @@ export async function GET(request: NextRequest) {
     })
 
     // Sort activities by timestamp
-    activities.sort((a, b) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    activities.sort((a, b) =>
+      new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime()
     )
 
     // Build active jobs list

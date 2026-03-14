@@ -12,9 +12,10 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     // Get user from session
     const authHeader = request.headers.get('authorization')
     if (!authHeader) {
@@ -34,7 +35,7 @@ export async function GET(
       )
     }
 
-    const videoId = params.id
+    const videoId = id
 
     // Fetch video
     const { data: video, error } = await supabase
@@ -124,9 +125,10 @@ export async function GET(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     // Get user from session
     const authHeader = request.headers.get('authorization')
     if (!authHeader) {
@@ -146,7 +148,7 @@ export async function DELETE(
       )
     }
 
-    const videoId = params.id
+    const videoId = id
 
     // Fetch video to get storage path
     const { data: video, error: fetchError } = await supabase

@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import fs from 'fs'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -114,9 +115,6 @@ export async function translateAudioToEnglish(
 }
 
 // Helper function to create a read stream from file path
-// This is a placeholder - in production, you'd use fs.createReadStream
-function createReadStream(filePath: string): any {
-  // In a real implementation, this would use Node.js fs module
-  // For now, we'll return the path as-is for the API to handle
-  return filePath
+function createReadStream(filePath: string): fs.ReadStream {
+  return fs.createReadStream(filePath)
 }

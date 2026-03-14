@@ -1,3 +1,5 @@
+'use client'
+
 import { AuthLayout } from '@/components/auth/AuthLayout'
 import { useState } from 'react'
 import { Loader2, Mail } from 'lucide-react'

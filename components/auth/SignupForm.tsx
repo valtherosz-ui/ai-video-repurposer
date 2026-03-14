@@ -48,7 +48,7 @@ export function SignupForm() {
     setError('')
 
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords don't match")
+      setError("Passwords don&apos;t match")
       return
     }
 
@@ -183,7 +183,7 @@ export function SignupForm() {
           </button>
         </div>
         {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-          <p className="text-xs text-red-400">Passwords don't match</p>
+          <p className="text-xs text-red-400">Passwords don&apos;t match</p>
         )}
       </div>
 
